@@ -488,8 +488,8 @@ function exportXLSX(sols: any[]) {
   ]);
   // Nome do arquivo: SOLICITACAO_NOME.xlsx ou data
   const nome = sols.length===1 && sols[0].solicitante
-    ? `SOLICITACAO_${sols[0].solicitante.toUpperCase().replace(/\s+/g,"_")}.xlsx`
-    : `SOLICITACOES_MDM_${new Date().toISOString().slice(0,10)}.xlsx`;
+    ? `SOLICITACAO_${sols[0].solicitante.toUpperCase().replace(/\s+/g,"_")}.xls`
+    : `SOLICITACOES_MDM_${new Date().toISOString().slice(0,10)}.xls`;
   const xml = buildXmlXlsx(headers, rows);
   downloadXlsx(xml, nome);
 }
