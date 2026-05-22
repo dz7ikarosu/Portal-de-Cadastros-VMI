@@ -443,7 +443,7 @@ function applyAbbreviations(text: string): string {
 }
 
 // ── EXPORTAR XLSX ─────────────────────────────────────────────────
-// Converte array de arrays em XML de planilha Excel (.xlsx via XML Spreadsheet 2003)
+// Converte array de arrays em XML de planilha Excel (.xls via XML Spreadsheet 2003)
 function buildXmlXlsx(headers: string[], rows: string[][]): string {
   const esc = (v: string) => String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   const cell = (v: string, isH=false) => `<Cell${isH?' ss:StyleID="h"':''}><Data ss:Type="String">${esc(v)}</Data></Cell>`;
@@ -486,7 +486,7 @@ function exportXLSX(sols: any[]) {
     s.desc_detalhada||"", s.observacoes||"",
     String(s.total_itens||1), fmtDate(s.created_at),
   ]);
-  // Nome do arquivo: SOLICITACAO_NOME.xlsx ou data
+  // Nome do arquivo: SOLICITACAO_NOME.xls ou data
   const nome = sols.length===1 && sols[0].solicitante
     ? `SOLICITACAO_${sols[0].solicitante.toUpperCase().replace(/\s+/g,"_")}.xls`
     : `SOLICITACOES_MDM_${new Date().toISOString().slice(0,10)}.xls`;
