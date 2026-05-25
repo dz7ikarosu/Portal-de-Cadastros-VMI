@@ -447,10 +447,47 @@ function applyAbbreviations(text: string): string {
 // Converte array de arrays em XML de planilha Excel (.xls via XML Spreadsheet 2003)
 function buildXmlXlsx(headers: string[], rows: string[][]): string {
   const esc = (v: string) => String(v||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  const cell = (v: string, isH=false) => `<Cell${isH?' ss:StyleID="h"':''}><Data ss:Type="String">${esc(v)}</Data></Cell>`;
-  const hRow = `<Row>${headers.map(h=>cell(h,true)).join("")}</Row>`;
-  const dRows = rows.map(r=>`<Row>${r.map(v=>cell(v)).join("")}</Row>`).join("\n");
-  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="h"><Font ss:Bold="1"/></Style></Styles><Worksheet ss:Name="MDM"><Table>${hRow}\n${dRows}</Table></Worksheet></Workbook>`;
+  
+  const cell = (v: string, styleID: string) => 
+    `<Cell ss:StyleID="${styleID}"><Data ss:Type="String">${esc(v)}</Data></Cell>`;
+
+  const hRow = `<Row ss:Height="22">${headers.map(h => cell(h, "h")).join("")}</Row>`;
+  const dRows = rows.map((r, i) => 
+    `<Row ss:Height="18">${r.map(v => cell(v, i%2===0 ? "d" : "d2")).join("")}</Row>`
+  ).join("\n");
+
+  const styles = `
+    <Styles>
+      <Style ss:ID="h">
+        <Font ss:Bold="1" ss:Color="#FFFFFF" ss:Size="10" ss:FontName="Calibri"/>
+        <Interior ss:Color="#1F3864" ss:Pattern="Solid"/>
+        <Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="2" ss:Color="#FFFFFF"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#FFFFFF"/>
+        </Borders>
+      </Style>
+      <Style ss:ID="d">
+        <Font ss:Size="9" ss:FontName="Calibri"/>
+        <Interior ss:Color="#FFFFFF" ss:Pattern="Solid"/>
+        <Alignment ss:Vertical="Center" ss:WrapText="0"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0D7E3"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0D7E3"/>
+        </Borders>
+      </Style>
+      <Style ss:ID="d2">
+        <Font ss:Size="9" ss:FontName="Calibri"/>
+        <Interior ss:Color="#EEF2F8" ss:Pattern="Solid"/>
+        <Alignment ss:Vertical="Center" ss:WrapText="0"/>
+        <Borders>
+          <Border ss:Position="Bottom" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0D7E3"/>
+          <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="1" ss:Color="#D0D7E3"/>
+        </Borders>
+      </Style>
+    </Styles>`;
+
+  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}<Worksheet ss:Name="MDM"><Table DefaultColumnWidth="100">${hRow}\n${dRows}</Table></Worksheet></Workbook>`;
 }
 function downloadXlsx(xml: string, filename: string) {
   try {
