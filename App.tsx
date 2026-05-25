@@ -710,7 +710,7 @@ function ConfirmModal({ msg, onConfirm, onCancel }: any) {
 // ══════════════════════════════════════════════════════════════════
 // CONSTRUTOR DE DESCRIÇÃO EXPANDIDO
 // ══════════════════════════════════════════════════════════════════
-const UNIDADES_DIM = ["MM","CM","M","POL","IN","KG","G","LT","ML","W","VA","A","V","HZ","RPM","°C"];
+const UNIDADES_DIM = ["MM","CM","M","MB","GB","POL","IN","KG","G","LT","ML","W","VA","A","V","HZ","RPM","°C"];
 
 const DESC_TEMPLATES: Record<string,{fields:{name:string,opts?:string[],hasDim?:boolean}[],unit?:string}> = {
   // ── 20 ELETROELETRÔNICO ──────────────────────────────────────
