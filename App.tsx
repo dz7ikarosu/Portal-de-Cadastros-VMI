@@ -1,4 +1,5 @@
-import * as React from 'react'; import { useState, useEffect, useRef, useCallback } from "react";
+import * as React from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
 
 // ══════════════════════════════════════════════════════════════════
 // CONFIG
@@ -711,34 +712,123 @@ function ConfirmModal({ msg, onConfirm, onCancel }: any) {
 // ══════════════════════════════════════════════════════════════════
 const UNIDADES_DIM = ["MM","CM","M","POL","IN","KG","G","LT","ML","W","VA","A","V","HZ","RPM","°C"];
 
-const DESC_TEMPLATES: Record<string,{fields:{name:string,opts?:string[],hasDim?:boolean}[]}> = {
-  "Parafuso":     { fields:[{name:"Cabeça",opts:["SEXTAVADO","CILINDRICO","CHATA","PANELA","ALLEN","FENDA","PHILLIPS"]},{name:"Rosca",opts:["M3","M4","M5","M6","M8","M10","M12","M14","M16","M20","UNC","UNF"]},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO","INOX 304","INOX 316","ALUMINIO","LATAO","NYLON"]},{name:"Acabamento",opts:["ZINCADO","NIQUELADO","FOSFATADO","NATURAL","GALVANIZADO"]}] },
-  "Porca":        { fields:[{name:"Rosca",opts:["M3","M4","M5","M6","M8","M10","M12","M14","M16","M20"]},{name:"Tipo",opts:["SEXTAVADA","BORBOLETA","CEGA","DIN 934"]},{name:"Material",opts:["ACO","INOX 304","ALUMINIO"]},{name:"Acabamento",opts:["ZINCADO","NIQUELADO","NATURAL"]}] },
-  "Arruela":      { fields:[{name:"Diâmetro",hasDim:true},{name:"Tipo",opts:["PLANA DIN 125","MOLA DIN 127","DENTADA"]},{name:"Material",opts:["ACO","INOX 304","ALUMINIO"]}] },
-  "Chapa":        { fields:[{name:"Espessura",hasDim:true},{name:"Largura",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO SAE 1020","ACO INOX 304","ALUMINIO 6061","GALVANIZADO","ZINCADO"]}] },
-  "Tubo":         { fields:[{name:"Diâmetro Ext",hasDim:true},{name:"Espessura",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO SAE 1020","INOX 304","ALUMINIO","COBRE","PVC"]}] },
-  "Perfil":       { fields:[{name:"Tipo",opts:["CANTONEIRA","METALON","VIGA U","VIGA I","REDONDO","QUADRADO"]},{name:"Dimensão",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO","ALUMINIO","INOX 304"]}] },
-  "Mola":         { fields:[{name:"Tipo",opts:["COMPRESSAO","TRACAO","TORCAO"]},{name:"Diâmetro Ext",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO","INOX 304"]}] },
-  "Cabo":         { fields:[{name:"Tipo",opts:["FLEXIVEL","RIGIDO","COAXIAL","FLAT","BLINDADO"]},{name:"Bitola",opts:["0.5MM","0.75MM","1MM","1.5MM","2.5MM","4MM","6MM","10MM"]},{name:"Comprimento",hasDim:true},{name:"Tensão",opts:["300V","450V","1000V"]}] },
-  "Conector":     { fields:[{name:"Tipo",opts:["JST","MOLEX","DIN","DB9","DB15","DB25","RJ45","USB-A","USB-B","USB-C","XLR","BNC"]},{name:"Pinos"},{name:"Sexo",opts:["MACHO","FEMEA","FEMEA+MACHO"]},{name:"Tensão",opts:["12V","24V","48V","110V","220V","380V"]}] },
-  "Sensor":       { fields:[{name:"Tipo",opts:["INDUTIVO","CAPACITIVO","OPTICO","ULTRASONICO","TEMPERATURA","PRESSAO","CORRENTE"]},{name:"Alcance",hasDim:true},{name:"Saída",opts:["PNP","NPN","4-20MA","0-10V","DIGITAL","RS485"]},{name:"Tensão Alim.",opts:["5V","12V","24V","48V"]}] },
-  "Monitor":      { fields:[{name:"Polegadas",hasDim:true},{name:"Resolução",opts:["1024X768","1280X1024","1920X1080","2560X1440","3840X2160"]},{name:"Painel",opts:["LCD","LED","IPS","TFT","OLED"]},{name:"Interface",opts:["VGA","HDMI","DVI","DP","USB-C"]}] },
-  "Motor":        { fields:[{name:"Tipo",opts:["MONOFASICO","TRIFASICO","DC","SERVO","PASSO","BRUSHLESS"]},{name:"Potência",hasDim:true},{name:"Tensão",opts:["110V","220V","380V","12VDC","24VDC","48VDC"]},{name:"Rotação",opts:["900RPM","1200RPM","1800RPM","3000RPM","3600RPM"]}] },
-  "Fonte":        { fields:[{name:"Tipo",opts:["CHAVEADA","LINEAR","DC/DC","AC/DC"]},{name:"Potência",hasDim:true},{name:"Tensão Entrada",opts:["110V","220V","110/220V","85-265V"]},{name:"Tensão Saída"},{name:"Corrente",hasDim:true}] },
-  "Inversor":     { fields:[{name:"Potência",hasDim:true},{name:"Tensão",opts:["220V","380V","440V"]},{name:"Fases",opts:["MONOFASICO","TRIFASICO"]},{name:"Fabricante/Modelo"}] },
-  "Placa PCI":    { fields:[{name:"Função"},{name:"Padrão",opts:["PCI","PCIe","ISA","USB","PROPRIETARY","SMD","THT"]},{name:"Tensão",opts:["3.3V","5V","12V","24V"]},{name:"Fabricante"}] },
-  "Bateria":      { fields:[{name:"Tipo",opts:["RECARREGAVEL","NAO-RECARREGAVEL","LACRADA"]},{name:"Tensão",hasDim:true},{name:"Capacidade",hasDim:true},{name:"Química",opts:["CHUMBO ACIDO","LITIO","NICD","NIMH","ALCALINA","LFP"]}] },
-  "Relé":         { fields:[{name:"Tensão Bobina",hasDim:true},{name:"Corrente Contato",hasDim:true},{name:"Pinos",opts:["4","5","8","11","14"]},{name:"Tipo",opts:["ELETROMAGNETICO","SSR","TEMPORIZADO","INTERMEDIARIO"]}] },
-  "Fusível":      { fields:[{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Tipo",opts:["RAPIDO","LENTO","RETARDADO","CERAMICO"]},{name:"Encapsulamento",opts:["5X20MM","6X32MM","LAMINA","CARRO","NH","DF"]}] },
-  "Resistor":     { fields:[{name:"Resistência"},{name:"Potência",hasDim:true},{name:"Tolerância",opts:["1%","5%","10%"]},{name:"Tipo",opts:["CARBONO","METAL FILME","WIREWOUND","SMD"]}] },
-  "Capacitor":    { fields:[{name:"Capacitância"},{name:"Tensão",hasDim:true},{name:"Tipo",opts:["ELETROLÍTICO","CERAMICO","FILM","TANTALIO","SUPERCAP"]},{name:"Encapsulamento",opts:["RADIAL","AXIAL","SMD"]}] },
-  "Transformador":{ fields:[{name:"Potência",hasDim:true},{name:"Tensão Primária",hasDim:true},{name:"Tensão Secundária",hasDim:true},{name:"Tipo",opts:["ISOLAMENTO","AUTOTRANSFORMADOR","TOROIDAL","EI"]}] },
-  "Disjuntor":    { fields:[{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Polos",opts:["1P","2P","3P","4P"]},{name:"Curva",opts:["B","C","D"]}] },
-  "Chave":        { fields:[{name:"Tipo",opts:["SELETORA","FIM DE CURSO","BOIA","PRESSAO","TEMPERATURA","NIVEL"]},{name:"Tensão",hasDim:true},{name:"Corrente",hasDim:true},{name:"Contatos",opts:["NA","NF","NA+NF"]}] },
+const DESC_TEMPLATES: Record<string,{fields:{name:string,opts?:string[],hasDim?:boolean}[],unit?:string}> = {
+  // ── 20 ELETROELETRÔNICO ──────────────────────────────────────
+  "Conector/Borne":     { fields:[{name:"Vias/Polos"},{name:"Passo",hasDim:true},{name:"Corrente/Tensão"},{name:"Material",opts:["PLASTICO","METAL","NYLON"]},{name:"Fixação",opts:["ENGATE RAPIDO","PARAFUSO","SOLDA","SMD"]}] },
+  "Contator/Disjuntor": { fields:[{name:"Tipo",opts:["CONTATOR","DISJUNTOR","BOTAO","CHAVE","RELE TERMICO"]},{name:"Corrente",hasDim:true},{name:"Polos",opts:["1P","2P","3P","4P"]},{name:"Tensão",opts:["110V","220V","380V","24VDC","12VDC"]}] },
+  "Fonte":              { fields:[{name:"Tipo",opts:["CHAVEADA","LINEAR","DC/DC","AC/DC","NOBREAK"]},{name:"Potência",hasDim:true},{name:"Tensão Entrada",opts:["110V","220V","110/220V","85-265V"]},{name:"Tensão Saída"},{name:"Corrente",hasDim:true}] },
+  "Sensor":             { fields:[{name:"Tipo",opts:["INDUTIVO","CAPACITIVO","OPTICO","ULTRASONICO","TEMPERATURA","PRESSAO","CORRENTE","MAGNETICO"]},{name:"Alcance",hasDim:true},{name:"Tensão",opts:["5V","12V","24V","48V","220V"]},{name:"Saída",opts:["PNP","NPN","4-20MA","0-10V","DIGITAL","RS485"]},{name:"Fixação",opts:["ROSCA M8","ROSCA M12","ROSCA M18","ROSCA M30","FLANGE"]}] },
+  "Gerador RX":         { fields:[{name:"Tipo",opts:["GERADOR","TUBO RX","FONTE RX"]},{name:"Potência",hasDim:true},{name:"kV",hasDim:true},{name:"Modelo"},{name:"Fabricante"}] },
+  "No-Break":           { fields:[{name:"Potência VA",hasDim:true},{name:"Entrada",opts:["110V","220V","110/220V"]},{name:"Saída",opts:["110V","220V"]},{name:"Bateria",opts:["7AH","9AH","17AH","EXTERNA"]}] },
+  "Placa PCI":          { fields:[{name:"Função"},{name:"Modelo"},{name:"Versão"},{name:"Interface",opts:["USB","RS232","RS485","ETHERNET","CAN","SPI","I2C","PROPRIETARY"]}] },
+  "Detector RX":        { fields:[{name:"Tecnologia",opts:["CCD","CMOS","FLAT PANEL","SCINTILADOR"]},{name:"Dimensão",hasDim:true},{name:"Resolução"},{name:"Modelo"}] },
+  "CPU/Computador":     { fields:[{name:"Tipo",opts:["CPU","NOTEBOOK","MINI PC","SBC","IPC"]},{name:"Processador"},{name:"Memória RAM",hasDim:true},{name:"Armazenamento",hasDim:true},{name:"Sistema",opts:["WINDOWS","LINUX","EMBARCADO"]}] },
+  "Cabo":               { fields:[{name:"Tipo",opts:["FLEXIVEL","RIGIDO","COAXIAL","FLAT","BLINDADO","PAR TRANCADO","FIBRA OPTICA"]},{name:"Vias"},{name:"Bitola",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Blindagem",opts:["BLINDADO","NAO BLINDADO"]}] },
+ "Disco Rígido":        { fields:[{name:"Tipo",opts:["HDD","SSD","NVME","SD CARD","EMMC"]},{name:"Capacidade",hasDim:true},{name:"RPM",opts:["5400RPM","7200RPM","10000RPM","SSD"]},{name:"Interface",opts:["SATA","USB","M2","NVME","IDE"]},{name:"Formato",opts:['2.5"','3.5"',"M2","MSATA"]}] },
+  "Terminal":           { fields:[{name:"Tipo",opts:["TERMINAL ANEL","TERMINAL GARFO","TERMINAL PINO","TERMINAL ILHOS"]},{name:"Bitola",hasDim:true},{name:"Material",opts:["COBRE","ALUMINIO","INOX"]},{name:"Revestimento",opts:["ESTANHADO","NIQUELADO","ISOLADO","NU"]}] },
+  "Motor":              { fields:[{name:"Tipo",opts:["MONOFASICO","TRIFASICO","DC","SERVO","PASSO","BRUSHLESS"]},{name:"Potência",hasDim:true},{name:"RPM"},{name:"Tensão",opts:["110V","220V","380V","12VDC","24VDC","48VDC"]}] },
+  "Filtro Elétrico":    { fields:[{name:"Tipo",opts:["EMI","RFI","PASSA BAIXA","PASSA ALTA","RC","LC"]},{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Encapsulamento",opts:["DIN","PAINEL","PCB","INLINE"]}] },
+  "Resistor":           { fields:[{name:"Resistência"},{name:"Potência",hasDim:true},{name:"Tolerância",opts:["1%","5%","10%","20%"]},{name:"Tipo",opts:["CARBONO","METAL FILME","WIREWOUND","SMD","VARISTOR"]}] },
+  "Fusível":            { fields:[{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Tipo",opts:["RAPIDO","LENTO","RETARDADO","CERAMICO","VIDRO"]},{name:"Encapsulamento",opts:["5X20MM","6X32MM","10X38MM","LAMINA","CARRO","NH"]}] },
+  "Transformador":      { fields:[{name:"Potência",hasDim:true},{name:"Tensão Primária",hasDim:true},{name:"Tensão Secundária",hasDim:true},{name:"Tipo",opts:["ISOLAMENTO","AUTOTRANSFORMADOR","TOROIDAL","EI","UI"]}] },
+  "Monitor":            { fields:[{name:"Polegadas",hasDim:true},{name:"Resolução",opts:["1024X768","1280X1024","1920X1080","2560X1440","3840X2160"]},{name:"Tipo Painel",opts:["LCD","LED","IPS","TFT","OLED","TOUCH"]}] },
+  "Lâmpada/LED":        { fields:[{name:"Tipo",opts:["LED","FLUORESCENTE","INCANDESCENTE","HALOGEN","UV"]},{name:"Potência",hasDim:true},{name:"Tensão",hasDim:true},{name:"Cor",opts:["BRANCO FRIO","BRANCO QUENTE","VERDE","VERMELHO","AZUL","AMARELO"]},{name:"Base",opts:["E27","E14","G4","GU10","T8","T5","SMD"]}] },
+  "Lente":              { fields:[{name:"Dist. Focal",hasDim:true},{name:"Abertura",opts:["F1.4","F1.8","F2.8","F4","F8"]},{name:"Rosca",opts:["C-MOUNT","CS-MOUNT","M12","M16","M25"]},{name:"Comprimento",hasDim:true}] },
+  "Interruptor":        { fields:[{name:"Tipo",opts:["BOTOEIRA","CHAVE SELETORA","FIM DE CURSO","MICRO SWITCH","REED SWITCH"]},{name:"Polos",opts:["1P","2P","NA","NF","NA+NF"]},{name:"Posições",opts:["2 POS","3 POS","4 POS","MOMENTANEO"]},{name:"Corrente",hasDim:true}] },
+  "Teclado":            { fields:[{name:"Tipo",opts:["MEMBRANA","MECANICO","INDUSTRIAL","NUMERICO","TOUCH"]},{name:"Layout",opts:["ABNT2","US","NUMERICO","PERSONALIZADO"]},{name:"Interface",opts:["USB","PS2","BLUETOOTH","WIRELESS","RS232"]}] },
+  "Memória/HD/Pen":     { fields:[{name:"Tipo",opts:["HD","SSD","PEN DRIVE","SD CARD","CF CARD","EMMC"]},{name:"Capacidade",hasDim:true},{name:"Velocidade"},{name:"Interface",opts:["USB 2.0","USB 3.0","USB-C","SATA","NVME","SD"]}] },
+  "Cooler/Ventilador":  { fields:[{name:"Dimensão",hasDim:true},{name:"Tensão",opts:["5V","12V","24V","110V","220V"]},{name:"RPM"},{name:"Rolamento",opts:["ESFERAS","SLEEVE","HIDRODYNAMIC"]},{name:"Conexão",opts:["2 PINOS","3 PINOS","4 PINOS"]}] },
+  "Diodo":              { fields:[{name:"Tipo",opts:["RETIFICADOR","ZENER","LED","SCHOTTKY","TVS","VARICAP"]},{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Encapsulamento",opts:["DO41","DO15","SMD","SOD","TO220"]}] },
+  "Sinalizador":        { fields:[{name:"Tipo",opts:["TORRE","BUZZER","SEMAFORO","BALIZA","LAMPADA SINALIZACAO"]},{name:"Cor",opts:["VERDE","VERMELHO","AMARELO","AZUL","BRANCO","MULTICOLOR"]},{name:"Tensão",hasDim:true},{name:"Fixação",opts:["PAINEL","DIN","COLUNA"]}] },
+  "Retificador":        { fields:[{name:"Tipo",opts:["PONTE RETIFICADORA","DIODO","MODULO","TRIFASICO"]},{name:"Corrente",hasDim:true},{name:"Tensão",hasDim:true},{name:"Encapsulamento",opts:["DIP","SMD","TO220","MODULE"]}] },
+  "Transistor":         { fields:[{name:"Tipo",opts:["NPN","PNP","MOSFET N","MOSFET P","IGBT","DARLINGTON"]},{name:"Tensão",hasDim:true},{name:"Corrente",hasDim:true},{name:"Encapsulamento",opts:["TO92","TO220","TO3","SMD SOT23","SMD D2PAK"]}] },
+  "Botão Emergência":   { fields:[{name:"Diâmetro",hasDim:true},{name:"Contatos",opts:["1NA","1NF","1NA+1NF","2NF"]},{name:"Fixação",opts:["PAINEL 22MM","PAINEL 30MM","PAINEL 40MM"]},{name:"Cor",opts:["VERMELHO","AMARELO"]}] },
+  "PLC/Controlador":    { fields:[{name:"Tipo",opts:["PLC","CLP","ARDUÍNO","RASPBERRY","CNC","MOTION"]},{name:"Entradas/Saídas"},{name:"Tensão",opts:["5V","12V","24V","110V","220V"]},{name:"Modelo"}] },
+  "Inversor Freq.":     { fields:[{name:"Potência",hasDim:true},{name:"Tensão",opts:["220V","380V","440V","480V"]},{name:"Corrente",hasDim:true},{name:"Fases",opts:["MONOFASICO","TRIFASICO"]}] },
+  "Conversor":          { fields:[{name:"Tipo",opts:["DC/DC","AC/DC","DC/AC","RS232/RS485","USB/SERIAL","PROTOCOLO"]},{name:"Entrada"},{name:"Saída"},{name:"Potência",hasDim:true}] },
+  "Bateria":            { fields:[{name:"Tensão",hasDim:true},{name:"Capacidade",hasDim:true},{name:"Tecnologia",opts:["CHUMBO ACIDO","LITIO LI-ION","LIFEPO4","NICD","NIMH","ALCALINA"]},{name:"Tipo",opts:["RECARREGAVEL","NAO-RECARREGAVEL","SELADA"]}] },
+  "Capacitor":          { fields:[{name:"Capacitância"},{name:"Tensão",hasDim:true},{name:"Tipo",opts:["ELETROLÍTICO","CERAMICO","FILM","TANTALIO","SUPERCAP","POLIESTER"]},{name:"Encapsulamento",opts:["RADIAL","AXIAL","SMD","THT"]}] },
+  "Processador":        { fields:[{name:"Modelo"},{name:"Clock",hasDim:true},{name:"Núcleos",opts:["2","4","6","8","12","16","32"]},{name:"Arquitetura",opts:["x86","ARM","RISC-V","MIPS"]}] },
+  "Relé":               { fields:[{name:"Tipo",opts:["ELETROMAGNETICO","SSR","TEMPORIZADO","INTERMEDIARIO","FOTOELETRICO"]},{name:"Tensão Bobina",hasDim:true},{name:"Contatos",opts:["1NA","1NF","1NA+1NF","2NA+2NF","DPDT"]},{name:"Corrente Contato",hasDim:true}] },
+  "CI":                 { fields:[{name:"Modelo"},{name:"Função"},{name:"Encapsulamento",opts:["DIP","SOP","QFP","BGA","SOT","PLCC","LCC"]}] },
+  "Microcontrolador":   { fields:[{name:"Modelo"},{name:"Flash",hasDim:true},{name:"Clock",hasDim:true},{name:"Encapsulamento",opts:["DIP","QFP","TQFP","LQFP","BGA"]}] },
+  "Bomba":              { fields:[{name:"Tipo",opts:["CENTRIFUGA","PERISTALTICA","ENGRENAGEM","VACUO","MEMBRANA"]},{name:"Vazão",hasDim:true},{name:"Tensão",opts:["110V","220V","380V","12VDC","24VDC"]},{name:"Pressão",hasDim:true}] },
+  "Microfone":          { fields:[{name:"Tipo",opts:["CONDENSER","DINAMICO","LAPELA","DIRECIONAL","OMNIDIRECIONAL"]},{name:"Sensibilidade"},{name:"Conexão",opts:["XLR","P2 3.5MM","USB","RJ45","BLUETOOTH"]}] },
+  "Amplificador":       { fields:[{name:"Tipo",opts:["AUDIO","RF","OPERACIONAL","INSTRUMENTACAO","CLASSE D"]},{name:"Potência",hasDim:true},{name:"Canais",opts:["1","2","4","8"]},{name:"Impedância",opts:["4 OHM","8 OHM","16 OHM","50 OHM","75 OHM"]}] },
+  "Atuador":            { fields:[{name:"Tipo",opts:["LINEAR ELETRICO","PNEUMATICO","HIDRAULICO","SERVO","PIEZOELETRICO"]},{name:"Curso",hasDim:true},{name:"Força",hasDim:true},{name:"Tensão",opts:["5V","12V","24V","110V","220V"]}] },
+  "Fotoacoplador":      { fields:[{name:"Canais",opts:["1","2","4","8"]},{name:"Tensão",hasDim:true},{name:"Encapsulamento",opts:["DIP4","DIP8","SMD","SOP"]}] },
+  "Estabilizador":      { fields:[{name:"Potência",hasDim:true},{name:"Entrada",opts:["110V","220V","110/220V"]},{name:"Saída",opts:["110V","220V","DUPLA"]}] },
+  "Switch/Hub":         { fields:[{name:"Tipo",opts:["SWITCH","HUB","SWITCH GERENCIAVEL","SWITCH INDUSTRIAL"]},{name:"Portas",opts:["4","5","8","16","24","48"]},{name:"Velocidade",opts:["10/100MBPS","GIGABIT","10G"]},{name:"Gerenciável",opts:["SIM","NAO"]}] },
+  "Roteador/Wireless":  { fields:[{name:"Tipo",opts:["ROTEADOR","ACCESS POINT","ANTENA","REPETIDOR","MODEM"]},{name:"Padrão",opts:["802.11N","802.11AC","802.11AX","5G","4G LTE"]},{name:"Velocidade"},{name:"Antenas",opts:["1","2","3","4","INTERNA"]}] },
+  "Camera":             { fields:[{name:"Tipo",opts:["IP","ANALOGICA","USB","INFRAVERMELHO","TERMICA","DOME","BULLET"]},{name:"Resolução",opts:["720P","1080P","2MP","4MP","8MP 4K","12MP"]},{name:"Lente",hasDim:true},{name:"Tecnologia",opts:["CCD","CMOS","STARLIGHT","WDR"]}] },
+  "Indutor/Bobina":     { fields:[{name:"Tipo",opts:["INDUTOR","BOBINA","CHOKE","TOROIDE","FERRITE"]},{name:"Indutância"},{name:"Corrente",hasDim:true},{name:"Encapsulamento",opts:["RADIAL","AXIAL","SMD","TOROIDE"]}] },
+  "Oscilador/Crystal":  { fields:[{name:"Tipo",opts:["CRYSTAL","OSCILADOR","TCXO","OCXO","VCXO"]},{name:"Frequência",hasDim:true},{name:"Tensão",hasDim:true},{name:"Encapsulamento",opts:["HC49","SMD","DIP","SIP"]}] },
+  "Dissipador":         { fields:[{name:"Tipo",opts:["DISSIPADOR","TERMISTOR","NTC","PTC","TERMOPAR"]},{name:"Dimensão",hasDim:true},{name:"Material",opts:["ALUMINIO","COBRE","GRAFITE"]},{name:"Fixação",opts:["PARAFUSO","CLIP","ADESIVO","SMD"]}] },
+  "Ar Condicionado":    { fields:[{name:"Tipo",opts:["SPLIT","JANELA","PORTATIL","INDUSTRIAL","PRECISAO"]},{name:"BTUs",hasDim:true},{name:"Tensão",opts:["110V","220V","380V"]},{name:"Ciclo",opts:["FRIO","QUENTE/FRIO","INVERTER"]}] },
+  "Termistor":          { fields:[{name:"Tipo",opts:["NTC","PTC","TERMOPAR K","TERMOPAR J","PT100","PT1000"]},{name:"Resistência",hasDim:true},{name:"Temperatura",hasDim:true},{name:"Encapsulamento",opts:["SMD","AXIAL","RADIAL","SONDA"]}] },
+  "Chicote Cabos":      { fields:[{name:"Vias"},{name:"Comprimento",hasDim:true},{name:"Aplicação"},{name:"Conector",opts:["JST","MOLEX","DUPONT","PERSONALIZADO"]}] },
+  "Gerador Energia":    { fields:[{name:"Potência",hasDim:true},{name:"Combustível",opts:["GASOLINA","DIESEL","GAS","BIGAS"]},{name:"Tensão",opts:["110V","220V","380V","TRIFASICO"]},{name:"Fase",opts:["MONOFASICO","TRIFASICO"]}] },
+  "Painel Elétrico":    { fields:[{name:"Tipo",opts:["QUADRO","PAINEL","RACK","GABINETE"]},{name:"Dimensão",hasDim:true},{name:"Tensão",opts:["24V","110V","220V","380V"]},{name:"IP",opts:["IP20","IP44","IP54","IP65","IP67"]}] },
+  "Cintilador":         { fields:[{name:"Material",opts:["NaI","CsI","BGO","LSO","PLÁSTICO"]},{name:"Dimensão",hasDim:true},{name:"Aplicação",opts:["RAIOS-X","GAMMA","BETA","NUCLEAR"]}] },
+  // ── 21 MATERIAL MECÂNICO ─────────────────────────────────────
+  "Parafuso":           { fields:[{name:"Cabeça",opts:["SEXTAVADO","CILINDRICO","CHATA","PANELA","ALLEN","FENDA","PHILLIPS","TORX"]},{name:"Rosca",opts:["M2","M3","M4","M5","M6","M8","M10","M12","M14","M16","M20","M24","UNC","UNF"]},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO SAE","INOX 304","INOX 316","ALUMINIO","LATAO","NYLON"]},{name:"Acabamento",opts:["ZINCADO","NIQUELADO","FOSFATADO","NATURAL","GALVANIZADO","OXIDADO"]}] },
+  "Porca":              { fields:[{name:"Rosca",opts:["M2","M3","M4","M5","M6","M8","M10","M12","M14","M16","M20"]},{name:"Tipo",opts:["SEXTAVADA","BORBOLETA","CEGA","TRAVAMENTO","DIN 934","DIN 985"]},{name:"Material",opts:["ACO","INOX 304","INOX 316","ALUMINIO","LATAO"]},{name:"Acabamento",opts:["ZINCADO","NIQUELADO","NATURAL","GALVANIZADO"]}] },
+  "Arruela":            { fields:[{name:"Tipo",opts:["PLANA","MOLA","DENTADA","CONICA","DIN 125","DIN 127","DIN 6798"]},{name:"Medida",hasDim:true},{name:"Material",opts:["ACO","INOX 304","INOX 316","ALUMINIO","BORRACHA","NYLON"]}] },
+  "Rolamento":          { fields:[{name:"Modelo"},{name:"Tipo",opts:["ESFERAS","ROLOS","AGULHA","AXIAL","AUTOALINHANTE"]},{name:"Vedação",opts:["ABERTO","ZZ","2RS","2Z","RS"]},{name:"Material",opts:["ACO CROMADO","INOX","CERAMICA","PLASTICO"]}] },
+  "Mangueira":          { fields:[{name:"Tipo",opts:["BORRACHA","PVC","POLIURETANO","METAL FLEXIVEL","TRANSSADA"]},{name:"Diâmetro",hasDim:true},{name:"Pressão",hasDim:true},{name:"Material",opts:["BORRACHA","PVC","PTFE","NYLON","INOX"]}] },
+  "Chapa":              { fields:[{name:"Material",opts:["ACO SAE 1020","ACO INOX 304","ACO INOX 316","ALUMINIO 6061","GALVANIZADO","ZINCADO","COBRE"]},{name:"Espessura",hasDim:true},{name:"Largura",hasDim:true},{name:"Comprimento",hasDim:true}] },
+  "Tubo":               { fields:[{name:"Tipo",opts:["REDONDO","QUADRADO","RETANGULAR","PERFIL U","PERFIL L"]},{name:"Diâmetro/Dim.",hasDim:true},{name:"Espessura",hasDim:true},{name:"Material",opts:["ACO SAE 1020","INOX 304","INOX 316","ALUMINIO","COBRE","PVC","ELETRODUTO"]},{name:"Comprimento",hasDim:true}] },
+  "Mola":               { fields:[{name:"Tipo",opts:["COMPRESSAO","TRACAO","TORCAO","DISCO BELLEVILLE","ESPIRAL"]},{name:"Diâmetro Ext.",hasDim:true},{name:"Comprimento",hasDim:true},{name:"Material",opts:["ACO MOLA","INOX 304","INOX 316","FOSFOR BRONZE"]}] },
+  "Gaxeta":             { fields:[{name:"Material",opts:["BORRACHA","NBR","EPDM","VITOM","PTFE","GRAFITE","FIBRA"]},{name:"Dimensão",hasDim:true},{name:"Aplicação",opts:["OLEO","AGUA","AR","VAPOR","QUIMICO"]}] },
+  "Correia":            { fields:[{name:"Tipo",opts:["DENTADA","PLANA","EM V","POLY-V","TIMING"]},{name:"Comprimento",hasDim:true},{name:"Largura",hasDim:true},{name:"Passo",opts:["T2.5","T5","T10","HTD 3M","HTD 5M","HTD 8M","XL","L","H"]}] },
+  "Redutor":            { fields:[{name:"Tipo",opts:["CICLOIDICO","PLANETARIO","VERMIFUGO","HELICAL","CONICO"]},{name:"Relação Redução"},{name:"Potência",hasDim:true},{name:"Modelo"}] },
+  "Peça Usinada":       { fields:[{name:"Nome/Função"},{name:"Material",opts:["ACO 1020","ACO 4140","INOX 304","ALUMINIO 6061","NYLON","POLIACETAL"]},{name:"Dimensão Principal",hasDim:true},{name:"Processo",opts:["TORNEAR","FRESAR","RETIFICAR","SOLDAR","DOBRAR"]}] },
+  // ── 22 MATERIAL SUPORTE ──────────────────────────────────────
+  "Software":           { fields:[{name:"Função"},{name:"Versão"},{name:"Licença",opts:["PERPÉTUA","ANUAL","MENSAL","OEM","OPEN SOURCE"]}] },
+  "Etiqueta/Adesivo":   { fields:[{name:"Tipo",opts:["ETIQUETA","PLAQUETA","ADESIVO","PLACA"]},{name:"Material",opts:["PAPEL","POLIESTER","ALUMINIO","INOX","PVC"]},{name:"Dimensão",hasDim:true},{name:"Cor",opts:["BRANCO","PRATA","TRANSPARENTE","PERSONALIZADO"]}] },
+  "Tinta":              { fields:[{name:"Tipo",opts:["ESMALTE","LATEX","EPOXI","PRIMER","ZARCAO","SPRAY"]},{name:"Cor"},{name:"Volume",hasDim:true},{name:"Secagem",opts:["AR","ESTUFA","UV"]}] },
+  "Vidro":              { fields:[{name:"Tipo",opts:["COMUM","TEMPERADO","LAMINADO","ACRILICO","POLICARBONATO"]},{name:"Espessura",hasDim:true},{name:"Dimensão",hasDim:true}] },
+  "Solda/Estanho":      { fields:[{name:"Tipo",opts:["ESTANHO","ELETRODO","SOLDA MIG","SOLDA TIG","PASTA SOLDA"]},{name:"Liga",opts:["60/40","63/37","SAC305","SN100","E6013","E7018"]},{name:"Diâmetro",hasDim:true},{name:"Peso/Comp.",hasDim:true}] },
+  // ── 23 EXPEDIENTE ────────────────────────────────────────────
+  "Cartucho/Toner":     { fields:[{name:"Tipo",opts:["TONER","CARTUCHO TINTA","FITA"]},{name:"Modelo Impressora"},{name:"Cor",opts:["PRETO","CIANO","MAGENTA","AMARELO","COLORIDO"]},{name:"Rendimento",hasDim:true}] },
+  "Material Escritório":{ fields:[{name:"Tipo"},{name:"Modelo/Cor"},{name:"Dimensão/Qtd.",hasDim:true}] },
+  "Celular":            { fields:[{name:"Marca",opts:["SAMSUNG","APPLE","MOTOROLA","XIAOMI","OUTROS"]},{name:"Modelo"},{name:"Armazenamento",hasDim:true},{name:"Sistema",opts:["ANDROID","IOS"]}] },
+  // ── 24 MATERIAL IMOBILIZADO ──────────────────────────────────
+  "Ferramenta":         { fields:[{name:"Tipo"},{name:"Dimensão",hasDim:true},{name:"Material",opts:["ACO RAPIDO","ACO INOX","WIDEA","CERAMICA"]},{name:"Aplicação"}] },
+  "Máquina/Equipamento":{ fields:[{name:"Tipo"},{name:"Modelo"},{name:"Potência",hasDim:true},{name:"Tensão",opts:["110V","220V","380V","12VDC","24VDC"]}] },
+  "Instrumento Medição":{ fields:[{name:"Tipo",opts:["PAQUIMETRO","MICROMETRO","MULTIMETRO","OSCILOSCÓPIO","MANÔMETRO","TERMÔMETRO"]},{name:"Faixa",hasDim:true},{name:"Precisão"},{name:"Modelo"}] },
+  // ── 25 SEG. TRABALHO ─────────────────────────────────────────
+  "Luva EPI":           { fields:[{name:"Material",opts:["BORRACHA","NEOPRENE","NITRILA","COURO","MALHA DE ACO","RASPA"]},{name:"Tamanho",opts:["P","M","G","GG","7","8","9","10","11"]},{name:"Aplicação",opts:["ELETRICA","QUIMICA","CORTE","SOLDA","MECANICA"]}] },
+  "Capacete EPI":       { fields:[{name:"Cor",opts:["BRANCO","AMARELO","LARANJA","VERDE","AZUL","VERMELHO"]},{name:"Classe",opts:["CLASSE A","CLASSE B","CLASSE C"]},{name:"Ajuste",opts:["AUTOLOCK","CATRACA","ELASTICO"]}] },
+  "Óculos EPI":         { fields:[{name:"Tipo",opts:["SEGURANÇA","AMPLA VISAO","SOLDAR","LASER"]},{name:"Lente",opts:["INCOLOR","FUMÊ","VERDE","DOURADO"]},{name:"Tratamento",opts:["ANTIRRISCO","ANTIEMBAÇANTE","UV","POLARIZADO"]}] },
+  "Extintor":           { fields:[{name:"Classe",opts:["A","B","C","AB","ABC","D"]},{name:"Capacidade",hasDim:true},{name:"Agente",opts:["PO QUIMICO","CO2","AGUA","ESPUMA","HALON"]}] },
+  // ── 26 PA/MR ─────────────────────────────────────────────────
+  "Scanner":            { fields:[{name:"Modelo"},{name:"Túnel",hasDim:true},{name:"Tecnologia",opts:["RAIOS-X","DUPLA VISTA","MULTI VISTA","CT"]},{name:"Tensão",opts:["110V","220V","380V"]}] },
+  "CFTV":               { fields:[{name:"Tipo",opts:["DVR","NVR","CAMERA IP","CAMERA ANALOGICA","SPEED DOME"]},{name:"Canais",opts:["4","8","16","32","64"]},{name:"Resolução",opts:["720P","1080P","4MP","8MP 4K"]},{name:"Armazenamento",hasDim:true}] },
+  "Controle Acesso":    { fields:[{name:"Tipo",opts:["LEITOR BIOMETRICO","LEITOR RFID","LEITOR FACIAL","CONTROLADOR","FECHADURA"]},{name:"Tecnologia",opts:["BIOMETRIA","RFID","FACIAL","SENHA","QR CODE"]},{name:"Modelo"}] },
+  "Alarme":             { fields:[{name:"Tipo",opts:["CENTRAL","SIRENE","DETECTOR PIR","CONTATO MAGNETICO","BATERIA"]},{name:"Alcance",hasDim:true},{name:"Tensão",hasDim:true}] },
+  // ── 27 PRODUTOS INTERMEDIÁRIOS ───────────────────────────────
+  "Subconjunto":        { fields:[{name:"Tipo",opts:["MECANICO","ELETRONICO","ALTA ENERGIA","BAIXA ENERGIA","SEG. ELETRONICA","DETECTOR METAL"]},{name:"Modelo"},{name:"Versão"}] },
+  "Spare Part":         { fields:[{name:"Modelo"},{name:"Aplicação"},{name:"Versão"}] },
+  // ── 28 SERVIÇOS ──────────────────────────────────────────────
+  "Serviço Instalação": { fields:[{name:"Tipo",opts:["INSTALACAO","MANUTENCAO","COMISSIONAMENTO","RETROFIT"]},{name:"Local"},{name:"Equipamento"}] },
+  "Treinamento":        { fields:[{name:"Tema"},{name:"Carga Horária",hasDim:true},{name:"Modalidade",opts:["PRESENCIAL","EAD","HIBRIDO"]}] },
+  // ── 30 REMANUFATURADO ─────────────────────────────────────────
+  "Remanufaturado":     { fields:[{name:"Tipo",opts:["BAIXA ENERGIA","CFTV","SCANNER","MODULO"]},{name:"Modelo"},{name:"Versão"}] },
+  // ── 31 RESÍDUO ───────────────────────────────────────────────
+  "Sucata":             { fields:[{name:"Material",opts:["FERRO","ALUMINIO","COBRE","ELETRONICO","MISTO"]},{name:"Origem"},{name:"Peso Aprox.",hasDim:true}] },
+  // ── 33/34 CONJUNTOS E ACESSÓRIOS ─────────────────────────────
+  "Conjunto/Peça Mec.": { fields:[{name:"Modelo",opts:["5020","5333","6040","5536","6550","7550","100100","150180","180180","BODYSCAN","FLATSCAN","CARGO","SMART LANE"]},{name:"Tipo",opts:["SV","DV","M","P3D","TROLLEY","MOVEL","VERTICAL"]},{name:"Versão"}] },
+  "Embalagem":          { fields:[{name:"Tipo",opts:["CAIXA","PALETE","BLISTER","FILME","ESPUMA","ISOPOR"]},{name:"Dimensão",hasDim:true},{name:"Material",opts:["PAPELAO","MADEIRA","PLASTICO","EPS","PET"]}] },
+  "Acessório":          { fields:[{name:"Tipo",opts:["TOTEM","MESA ROLETES","ESTEIRA","BIOMBO","BALANCA","GERADOR RX","RAMPA"]},{name:"Dimensão",hasDim:true},{name:"Material",opts:["ACO","ALUMINIO","INOX","PLASTICO"]}] },
+  // ── 98/99 SERVIÇO/CONSUMO ────────────────────────────────────
+  "Serviço":            { fields:[{name:"Tipo"},{name:"Descrição Complementar"}] },
+  "Consumo":            { fields:[{name:"Tipo"},{name:"Finalidade"}] },
+  "Mão de Obra":        { fields:[{name:"Processo"},{name:"Setor"},{name:"Atividade"}] },
 };
 
 // Campo dimensional: valor + unidade de medida
-function DimField({ label, value, onChange }: any) {
+abel, value, onChange }: any) {
   const [val, setVal] = useState((value||"").replace(/[A-Z°]+$/, ""));
   const [unit, setUnit] = useState((value||"").match(/([A-Z°]+)$/)?.[1] || "MM");
   useEffect(() => {
@@ -1934,7 +2024,7 @@ function Detalhe({ sol, onBack, onUpdate, role }: any) {
 // ══════════════════════════════════════════════════════════════════
 // FILA MDM
 // ══════════════════════════════════════════════════════════════════
-function FilaMDM({ sols, loading, onRefresh, role }: any) {
+function FilaMDM({ sols, loading, onRefresh, role, title="Fila de Atendimento" }: any) {
   const [search, setSearch] = useState("");
   const [fStatus, setFStatus] = useState("Todos");
   const [fSetor, setFSetor] = useState("Todos");
@@ -1961,7 +2051,7 @@ function FilaMDM({ sols, loading, onRefresh, role }: any) {
       <div style={{ marginBottom:20 }}>
         <div style={{ fontSize:11, color:C.textMuted, letterSpacing:1.5, textTransform:"uppercase", marginBottom:4 }}>Painel MDM</div>
         <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end" }}>
-          <h1 style={{ margin:0, fontSize:24, fontWeight:700, color:C.text }}>Fila de Atendimento</h1>
+          <h1 style={{ margin:0, fontSize:24, fontWeight:700, color:C.text }}>{title}</h1>
           <div style={{ display:"flex", gap:8 }}>
             <button onClick={handleExportAll} disabled={exporting}
               style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, color:exporting?C.yellow:C.textSub, padding:"8px 14px", cursor:"pointer", display:"flex", alignItems:"center", gap:6, fontSize:12, fontFamily:"'IBM Plex Sans',sans-serif", transition:"all .2s" }}>
@@ -2014,7 +2104,13 @@ function FilaMDM({ sols, loading, onRefresh, role }: any) {
                   <tr key={s.id} style={{ borderTop:`1px solid ${C.border}`, cursor:"pointer", transition:"background .12s" }}
                     onMouseEnter={e=>e.currentTarget.style.background=C.surfaceMid}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                    onClick={()=>setSel(s)}>
+                    onClick={()=>{
+                      if(s.responsavel && s.responsavel!==role && role==="mdm" && !userName?.includes(s.responsavel.split(" ")[0].toLowerCase())) {
+                        alert(`🔒 Solicitação em análise por: ${s.responsavel}\nApenas o responsável ou DEV pode acessar.`);
+                        return;
+                      }
+                      setSel(s);
+                    }}>
                     <td style={{ padding:"12px 14px" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:7 }}>
                         {s.urgente&&<span style={{ width:7, height:7, borderRadius:"50%", background:C.red, display:"inline-block", flexShrink:0 }}/>}
@@ -2318,7 +2414,7 @@ function AlteracaoCadastro({ onCreated, onBack }: any) {
 ${instrucoes||""}
 ${observacoes||""}`.trim(),
         prioridade:"Normal", urgente:false, total_itens:1,
-        tipo_solicitacao:"alteracao",
+        tipo_solicitacao:"alteracao" as any,
       };
       const [created] = await insertSolicitacao(payload);
       await insertHistorico({ solicitacao_id:created.id, acao:"Alteração solicitada", usuario:solicitante, observacao:`Produto: ${codProduto}` });
@@ -2428,7 +2524,7 @@ function SolicitanteApp({ onLogout }: any) {
     setLoading(false);
   }, []);
   useEffect(()=>{ loadData(); },[loadData]);
-  const NAV = [{ id:"home", icon:"dashboard", label:"Início" }, { id:"nova", icon:"plus", label:"Nova Solicitação" }, { id:"alterar", icon:"edit", label:"Alterar Cadastro" }];
+  const NAV = [{ id:"home", icon:"dashboard", label:"Início" }, { id:"nova", icon:"plus", label:"Nova Solicitação" }, { id:"alterar", icon:"edit", label:"Alterar Cadastro" }, { id:"finalizados", icon:"check", label:"Finalizados" }];
   return (
     <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;700&display=swap');@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box;margin:0;padding:0}::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#252D3E;border-radius:3px}input,select,textarea{color-scheme:dark}input:focus,select:focus,textarea:focus{border-color:#F4B61A!important;outline:none;box-shadow:0 0 0 3px #F4B61A10}button:active{opacity:.85}option{background:#131825}`}</style>
@@ -2451,7 +2547,7 @@ function SolicitanteApp({ onLogout }: any) {
                 </button>
                 <Card style={{ padding:"30px 24px" }}>
                   <Icon name="clock" size={30} color={C.blue}/>
-                  <div style={{ fontSize:16, fontWeight:700, color:C.text, marginTop:14 }}>Minhas Solicitações</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:C.text, marginTop:14 }}>Solicitações em Andamento</div>
                   <div style={{ fontSize:28, fontWeight:700, color:C.blue, marginTop:6 }}>{loading?"…":sols.length} total</div>
                 </Card>
               </div>
@@ -2476,6 +2572,34 @@ function SolicitanteApp({ onLogout }: any) {
             </div>
           )}
           {view==="nova"&&<NovaSolicitacao onCreated={loadData} onBack={()=>setView("home")}/>}
+          {view==="finalizados"&&(
+            <div style={{ animation:"fadeIn .25s ease" }}>
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:11, color:C.green, letterSpacing:1.5, textTransform:"uppercase", marginBottom:4, fontWeight:700 }}>Histórico</div>
+                <h1 style={{ margin:0, fontSize:24, fontWeight:700, color:C.text }}>Cadastros <span style={{color:C.green}}>Finalizados</span></h1>
+              </div>
+              {sols.filter((s:any)=>s.status==="Finalizado").length===0
+                ? <Empty msg="Nenhum cadastro finalizado ainda."/>
+                : <Card style={{ padding:0, overflow:"hidden" }}>
+                    {sols.filter((s:any)=>s.status==="Finalizado").map((s:any,i:number,arr:any[])=>(
+                      <div key={s.id} style={{ padding:"14px 20px", borderBottom:i<arr.length-1?`1px solid ${C.border}`:"none" }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:12, flexWrap:"wrap" }}>
+                          <span style={{ fontFamily:"monospace", fontSize:11, color:C.green, minWidth:90 }}>{s.numero}</span>
+                          <span style={{ flex:1, fontSize:13, color:C.text, fontWeight:500 }}>{s.descricao}</span>
+                          <StatusTag status={s.status}/>
+                        </div>
+                        <div style={{ display:"flex", gap:16, marginTop:6, fontSize:11, color:C.textMuted, flexWrap:"wrap" }}>
+                          {s.responsavel&&<span>👤 {s.responsavel}</span>}
+                          <span>📅 {fmtDate(s.created_at)}</span>
+                          {s.setor&&<span>🏢 {s.setor}</span>}
+                          {s.observacoes&&<span>💬 {s.observacoes.slice(0,60)}{s.observacoes.length>60?"...":""}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </Card>
+              }
+            </div>
+          )}
           {view==="alterar"&&<AlteracaoCadastro onCreated={loadData} onBack={()=>setView("home")}/>}
         </main>
       </div>
@@ -2501,9 +2625,11 @@ function MDMApp({ role, userName, onLogout }: any) {
   useEffect(()=>{ const id=setInterval(loadData,30000); return ()=>clearInterval(id); },[loadData]);
 
   const NAV = [
-    { id:"dashboard",  icon:"dashboard", label:"Dashboard"    },
-    { id:"fila",       icon:"list",      label:"Fila MDM"     },
-    { id:"relatorios", icon:"chart",     label:"Relatórios"   },
+    { id:"dashboard",   icon:"dashboard", label:"Dashboard"          },
+    { id:"fila",        icon:"list",      label:"Solicitações"        },
+    { id:"alteracoes",  icon:"edit",      label:"Alterações"         },
+    { id:"finalizados", icon:"check",     label:"Finalizados"        },
+    { id:"relatorios",  icon:"chart",     label:"Relatórios"         },
     ...(role==="dev"?[{ id:"dev", icon:"wrench", label:"Painel Dev" }]:[]),
   ];
 
@@ -2514,9 +2640,11 @@ function MDMApp({ role, userName, onLogout }: any) {
         <Sidebar view={view} setView={setView} nav={NAV} role={role} userName={userName} lastSync={lastSync} onLogout={onLogout} isConnected={isConfigured()}/>
         <main style={{ flex:1, overflowY:"auto", padding:"28px 32px" }}>
           <div style={{ animation:"fadeIn .2s ease" }}>
-            {view==="dashboard"  &&<Dashboard sols={sols} loading={loading} setView={setView}/>}
-            {view==="fila"       &&<FilaMDM sols={sols} loading={loading} onRefresh={loadData} role={role}/>}
-            {view==="relatorios" &&<Relatorios sols={sols} loading={loading}/>}
+            {view==="dashboard"   &&<Dashboard sols={sols} loading={loading} setView={setView}/>}
+            {view==="fila"        &&<FilaMDM sols={sols.filter((s:any)=>s.tipo_solicitacao!=="alteracao"&&s.status!=="Finalizado")} loading={loading} onRefresh={loadData} role={role} title="Solicitações de Cadastro"/>}
+            {view==="alteracoes"  &&<FilaMDM sols={sols.filter((s:any)=>s.tipo_solicitacao==="alteracao"&&s.status!=="Finalizado")} loading={loading} onRefresh={loadData} role={role} title="Alterações de Cadastro"/>}
+            {view==="finalizados" &&<FilaMDM sols={sols.filter((s:any)=>s.status==="Finalizado")} loading={loading} onRefresh={loadData} role={role} title="Cadastros Finalizados"/>}
+            {view==="relatorios"  &&<Relatorios sols={sols} loading={loading}/>}
             {view==="dev"&&role==="dev"&&<DevPanel sols={sols} loading={loading} onRefresh={loadData}/>}
           </div>
         </main>
