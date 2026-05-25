@@ -2657,13 +2657,30 @@ function MDMApp({ role, userName, onLogout }: any) {
 // APP ROOT
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
-  const [auth, setAuth] = useState<{role:string,userName?:string}|null>(null);
+  const [auth, setAuth] = useState<{role:string,userName?:string}|null>(() => {
+    try {
+      const saved = localStorage.getItem("vmi_auth");
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const handleLogin = (role: string, userName?: string) => {
+    const a = { role, userName };
+    localStorage.setItem("vmi_auth", JSON.stringify(a));
+    setAuth(a);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("vmi_auth");
+    setAuth(null);
+  };
+
   if (!auth) return (
     <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;700&display=swap');@keyframes spin{to{transform:rotate(360deg)}}@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}*{box-sizing:border-box;margin:0;padding:0}input,select,textarea{color-scheme:dark}input:focus,select:focus,textarea:focus{border-color:#F4B61A!important;outline:none}button:active{opacity:.85}option{background:#131825}`}</style>
-      <LoginScreen onLogin={(role:string,userName?:string)=>setAuth({role,userName})}/>
+      <LoginScreen onLogin={handleLogin}/>
     </>
   );
-  if (auth.role==="solicitante") return <SolicitanteApp onLogout={()=>setAuth(null)}/>;
-  return <MDMApp role={auth.role} userName={auth.userName} onLogout={()=>setAuth(null)}/>;
+  if (auth.role==="solicitante") return <SolicitanteApp onLogout={handleLogout}/>;
+  return <MDMApp role={auth.role} userName={auth.userName} onLogout={handleLogout}/>;
 }
