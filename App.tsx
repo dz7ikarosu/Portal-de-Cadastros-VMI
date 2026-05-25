@@ -861,7 +861,7 @@ function ItemForm({ item, idx, onChange, onRemove, planilha }: any) {
   const codMecError = item.cod_mecanico && item.sigla === "MP" && !item.cod_mecanico.startsWith("3")
     ? "Código mecânico deve começar com 3" : "";
 
-  const isMPorElec = item.sigla === "MP" || item.sigla === "PI" || item.sigla === "PA";
+  const isMPorElec = true; // Construtor disponível para todos os tipos
 
   // ── Grupos que exigem Control SCF obrigatório ─────────────────
   const GRUPOS_SCF = ["2003","2005","2006","2007","2008","2009","2010","2014","2019","2036","2038","2053","2057"];
@@ -895,6 +895,27 @@ function ItemForm({ item, idx, onChange, onRemove, planilha }: any) {
     }
   }, [item.sigla]);
 
+  // ── 1. Auto-append código mecânico na descrição ───────────────
+  useEffect(() => {
+    if (!item.cod_mecanico) return;
+    // Remove qualquer sufixo antigo " / XXXXX" e adiciona o novo
+    const base = item.descricao.replace(/\s*\/\s*[\w.]+$/, "").trim();
+    const nova = base ? `${base} / ${item.cod_mecanico}` : item.descricao;
+    if (nova !== item.descricao && nova.length <= 90) {
+      onChange({ ...item, descricao: nova });
+    }
+  }, [item.cod_mecanico]);
+
+  // ── 2. Placeholder XX.XX.XXXXX para PI e PA sem cod_mecanico ──
+  const descPreview = (() => {
+    if (!item.descricao) return "";
+    if ((item.sigla === "PI" || item.sigla === "PA") && !item.cod_mecanico) {
+      const base = item.descricao.replace(/\s*\/\s*XX\.XX\.XXXXX.*$/, "").trim();
+      return base ? `${base} / XX.XX.XXXXX` : base;
+    }
+    return item.descricao;
+  })();
+
   return (
     <div style={{ border:`1px solid ${C.border}`, borderRadius:10, overflow:"hidden", marginBottom:14, transition:"box-shadow .2s", boxShadow:"0 2px 8px rgba(0,0,0,.2)" }}>
       <div style={{ background:C.surfaceMid, padding:"13px 18px", display:"flex", alignItems:"center", gap:12, cursor:"pointer" }}
@@ -911,13 +932,22 @@ function ItemForm({ item, idx, onChange, onRemove, planilha }: any) {
 
       {item.expanded && (
         <div style={{ padding:18 }}>
-          {/* Toggle construtor */}
-          {isMPorElec && (
+          {/* Toggle construtor — obrigatório para MP */}
+          {item.sigla === "MP" ? (
+            <div style={{ marginBottom:14, padding:"10px 14px", background:C.yellowDim, borderRadius:8, border:`1px solid ${C.yellowBorder}` }}>
+              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
+                <Icon name="zap" size={13} color={C.yellow}/>
+                <span style={{ fontSize:11, color:C.yellow, fontWeight:700, letterSpacing:0.5, textTransform:"uppercase" }}>Construtor de Descrição — Obrigatório para MP</span>
+              </div>
+              <Toggle label="Ativar construtor automático" value={useBuilder} onChange={setUseBuilder}/>
+              {!useBuilder && <div style={{ marginTop:6, fontSize:11, color:C.red }}>⚠ Para MP o construtor deve ser utilizado para garantir padronização.</div>}
+            </div>
+          ) : (
             <div style={{ marginBottom:14, padding:"10px 14px", background:C.bg, borderRadius:8, border:`1px solid ${C.border}` }}>
-              <Toggle label="⚡ Usar construtor automático de descrição técnica" value={useBuilder} onChange={setUseBuilder}/>
+              <Toggle label="⚡ Usar construtor automático de descrição" value={useBuilder} onChange={setUseBuilder}/>
             </div>
           )}
-          {useBuilder && isMPorElec && (
+          {useBuilder && (
             <DescBuilder sigla={item.sigla} onChange={(desc:string)=>onChange({...item,descricao:desc})}/>
           )}
 
@@ -928,9 +958,21 @@ function ItemForm({ item, idx, onChange, onRemove, planilha }: any) {
                 <label style={{ fontSize:11, fontWeight:600, color:C.textSub, letterSpacing:0.5, textTransform:"uppercase" }}>Descrição do Produto<span style={{ color:C.yellow, marginLeft:3 }}>*</span></label>
                 <span style={{ fontSize:10, color:(item.descricao?.length||0)>80?C.red:C.textMuted }}>{item.descricao?.length||0}/90</span>
               </div>
-              <input maxLength={90} placeholder="Máx. 90 caracteres — ou use o construtor acima" value={item.descricao}
-                onChange={e=>{onChange({...item,descricao:e.target.value});setShowDrop(true);}} style={iS}
+              <input maxLength={90} placeholder="Máx. 90 caracteres — ou use o construtor acima"
+                value={item.descricao}
+                onChange={e=>{
+                  // Strip PI/PA placeholder on manual edit
+                  const v = e.target.value.replace(/ \/ XX\.XX\.XXXXX$/,"");
+                  onChange({...item,descricao:v});
+                  setShowDrop(true);
+                }} style={iS}
                 onBlur={()=>setTimeout(()=>setShowDrop(false),200)}/>
+              {(item.sigla==="PI"||item.sigla==="PA") && !item.cod_mecanico && item.descricao && (
+                <div style={{ marginTop:4, fontSize:11, color:C.textMuted, fontFamily:"monospace" }}>
+                  Preview: <span style={{ color:C.yellow }}>{descPreview}</span>
+                  <span style={{ marginLeft:6, color:C.textMuted, fontSize:10 }}>(código será atribuído na integração)</span>
+                </div>
+              )}
               {showDrop && sugestoes.length > 0 && (
                 <div style={{ position:"absolute", top:"100%", left:0, right:0, background:C.surfaceMid, border:`1px solid ${C.border}`, borderRadius:"0 0 8px 8px", zIndex:100, maxHeight:180, overflowY:"auto", boxShadow:"0 8px 24px rgba(0,0,0,.4)" }}>
                   {sugestoes.map((s:any) => (
@@ -953,7 +995,23 @@ function ItemForm({ item, idx, onChange, onRemove, planilha }: any) {
 
             <Field label="Fabricante / Fornecedor" placeholder="Ex: ABB, WEG, FESTO..." value={item.fabricante} onChange={set("fabricante")}/>
             <Field label="Modelo / Referência" placeholder="Ex: W21, CFW500..." value={item.modelo} onChange={set("modelo")}/>
-            <Field label="NCM" placeholder="0000.00.00" value={item.ncm} onChange={set("ncm")} required/>
+            <div style={{ display:"flex", flexDirection:"column", gap:5 }}>
+              <label style={{ fontSize:11, fontWeight:600, color:C.textSub, letterSpacing:0.5, textTransform:"uppercase" }}>NCM<span style={{ color:C.yellow, marginLeft:3 }}>*</span></label>
+              <input
+                placeholder="0000.00.00"
+                value={item.ncm}
+                maxLength={10}
+                inputMode="numeric"
+                onChange={e => {
+                  const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 8);
+                  let masked = raw;
+                  if (raw.length > 4) masked = raw.slice(0,4) + "." + raw.slice(4);
+                  if (raw.length > 6) masked = raw.slice(0,4) + "." + raw.slice(4,6) + "." + raw.slice(6);
+                  onChange({...item, ncm: masked});
+                }}
+                style={iS}
+              />
+            </div>
 
             <div>
               <SearchSelect label="Grupo Protheus" value={item.grupo} onChange={(v:string)=>onChange({...item,grupo:v})} options={GRUPOS_PROTHEUS_ITENS} placeholder="Buscar grupo..." required/>
@@ -1216,11 +1274,12 @@ function NovaSolicitacao({ onCreated, onBack }: any) {
     for (let i = 0; i < items.length; i++) {
       const it = items[i];
       if (!it.descricao || it.descricao.length > 90) return `Item ${i+1}: Descrição inválida (máx. 90 chars).`;
-      if (!it.sigla) return `Item ${i+1}: Selecione a sigla.`;
+      if (!it.sigla) return `Item ${i+1}: Campo "Tipo" é obrigatório.`;
       if (!it.unidade) return `Item ${i+1}: Selecione a unidade.`;
       if (!it.ncm) return `Item ${i+1}: Preencha o NCM.`;
       if (!it.grupo) return `Item ${i+1}: Selecione o Grupo Protheus.`;
       if (it.sigla === "MP" && !it.prototipo && (!it.custo || it.custo === "")) return `Item ${i+1}: Custo obrigatório para MP não-protótipo.`;
+      if (it.sigla === "MP" && !it.descricao) return `Item ${i+1}: Use o construtor automático para preencher a descrição do MP.`;
       if (it.grupo && it.grupo.match(/^3/) && !it.cod_mecanico) return `Item ${i+1}: Código mecânico obrigatório para grupos iniciados com 3.`;
       if (it.importado && !it.desc_ingles) return `Item ${i+1}: Descrição em inglês obrigatória para produto importado.`;
       if (it.cod_mecanico && it.sigla==="MP" && !it.cod_mecanico.startsWith("3"))
@@ -1451,43 +1510,139 @@ function InfoCell({ label, val, mono=false, wide=false, highlight="" }: any) {
   );
 }
 
-function ItemExpandivel({ it, idx }: { it:any, idx:number }) {
+function ItemExpandivel({ it, idx, solId, onSaved, role }: { it:any, idx:number, solId?:string, onSaved?:()=>void, role?:string }) {
   const [open, setOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [data, setData] = useState<any>({...it});
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (!solId) return;
+    setSaving(true);
+    try {
+      // Itens extras são salvos dentro do JSON itens_extras da solicitação pai
+      // Buscamos a solicitação, atualizamos o item e salvamos de volta
+      const res = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/solicitacoes?id=eq.${solId}&select=itens_extras`, { headers: sbHeaders() });
+      const rows = await res.json();
+      if (rows?.[0]) {
+        let extras: any[] = [];
+        try { extras = JSON.parse(rows[0].itens_extras || "[]"); } catch {}
+        // idx 0 = item principal (não editado aqui), idx > 0 = extra (índice extras[idx-1])
+        if (idx > 0) extras[idx - 1] = { ...data };
+        await updateSolicitacao(solId, { itens_extras: JSON.stringify(extras) });
+      }
+      setEditMode(false);
+      if (onSaved) onSaved();
+    } catch(e:any) { alert("Erro ao salvar: " + e.message); }
+    setSaving(false);
+  };
+
   return (
-    <div style={{ border:`1px solid ${C.border}`, borderRadius:8, overflow:"hidden", marginBottom:10 }}>
-      <div onClick={()=>setOpen(!open)} style={{ background:C.surfaceMid, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
+    <div style={{ border:`1px solid ${editMode?C.blue:C.border}`, borderRadius:8, overflow:"hidden", marginBottom:10, transition:"border-color .2s" }}>
+      <div onClick={()=>{ if(!editMode) setOpen(!open); }} style={{ background:C.surfaceMid, padding:"12px 16px", display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}>
         <div style={{ width:24, height:24, borderRadius:6, background:C.yellowDim, border:`1px solid ${C.yellowBorder}`, display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:700, color:C.yellow, flexShrink:0 }}>{idx+1}</div>
         <div style={{ flex:1, minWidth:0 }}>
-          <div style={{ fontSize:13, fontWeight:600, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{it.descricao||"Item sem descrição"}</div>
-          <div style={{ fontSize:11, color:C.textMuted, marginTop:2 }}>{[it.sigla,it.unidade,it.ncm].filter(Boolean).join(" · ")}</div>
+          <div style={{ fontSize:13, fontWeight:600, color:C.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{data.descricao||"Item sem descrição"}</div>
+          <div style={{ fontSize:11, color:C.textMuted, marginTop:2 }}>{[data.sigla,data.unidade,data.ncm].filter(Boolean).join(" · ")}</div>
         </div>
-        {it.sigla&&<span style={{ background:C.yellowDim, color:C.yellow, border:`1px solid ${C.yellowBorder}`, borderRadius:4, fontSize:10, fontWeight:700, padding:"2px 8px", flexShrink:0 }}>{it.sigla}</span>}
+        {data.sigla&&<span style={{ background:C.yellowDim, color:C.yellow, border:`1px solid ${C.yellowBorder}`, borderRadius:4, fontSize:10, fontWeight:700, padding:"2px 8px", flexShrink:0 }}>{data.sigla}</span>}
+        {(role==="mdm"||role==="dev") && idx > 0 && !editMode && (
+          <button onClick={e=>{e.stopPropagation();setOpen(true);setEditMode(true);}}
+            style={{ background:C.blueDim, border:`1px solid ${C.blue}30`, color:C.blue, borderRadius:4, fontSize:11, padding:"3px 8px", cursor:"pointer", fontFamily:"'IBM Plex Sans',sans-serif", flexShrink:0 }}>
+            Editar
+          </button>
+        )}
         <Icon name={open?"chevron_up":"chevron_down"} size={14} color={C.textMuted}/>
       </div>
-      {open && (
+
+      {open && !editMode && (
         <div style={{ padding:16, display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:10 }}>
-          <InfoCell label="Descrição" val={it.descricao} wide/>
-          <InfoCell label="Tipo/Sigla" val={it.sigla}/>
-          <InfoCell label="Unidade" val={it.unidade}/>
-          <InfoCell label="NCM" val={it.ncm}/>
-          <InfoCell label="Grupo Protheus" val={it.grupo} wide/>
-          <InfoCell label="Fabricante" val={it.fabricante}/>
-          <InfoCell label="Modelo" val={it.modelo}/>
-          <InfoCell label="Custo Est." val={it.custo?`R$ ${it.custo}`:""}/>
-          <InfoCell label="Cod. Mecânico" val={it.cod_mecanico}/>
-          {it.desc_detalhada&&<InfoCell label="Descrição Técnica" val={it.desc_detalhada} wide/>}
+          <InfoCell label="Descrição" val={data.descricao} wide/>
+          <InfoCell label="Tipo" val={data.sigla}/>
+          <InfoCell label="Unidade" val={data.unidade}/>
+          <InfoCell label="NCM" val={data.ncm}/>
+          <InfoCell label="Grupo Protheus" val={data.grupo} wide/>
+          <InfoCell label="Fabricante" val={data.fabricante}/>
+          <InfoCell label="Modelo" val={data.modelo}/>
+          <InfoCell label="Custo Est." val={data.custo?`R$ ${data.custo}`:""}/>
+          <InfoCell label="Cod. Mecânico" val={data.cod_mecanico}/>
+          <InfoCell label="Armazém" val={data.armazem}/>
+          {data.desc_ingles&&<InfoCell label="Descrição em Inglês" val={data.desc_ingles} wide/>}
+          {data.desc_detalhada&&<InfoCell label="Descrição Técnica" val={data.desc_detalhada} wide/>}
           <div style={{ gridColumn:"1/-1", display:"flex", flexWrap:"wrap", gap:8, marginTop:4 }}>
             {[
-              {label:"Importado",  val:it.importado},
-              {label:"Kanban",     val:it.kanban},
-              {label:"Protótipo",  val:it.prototipo},
-              {label:"Chumbo/RoHS",val:it.chumbo},
-              {label:"Control SCF",val:it.control_scf},
+              {label:"Importado",  val:data.importado},
+              {label:"Kanban",     val:data.kanban},
+              {label:"Protótipo",  val:data.prototipo},
+              {label:"Chumbo/RoHS",val:data.chumbo},
+              {label:"Control SCF",val:data.control_scf},
             ].map((a:any)=>(
               <span key={a.label} style={{ fontSize:11, padding:"3px 10px", borderRadius:4, background:a.val?C.yellowDim:C.bg, border:`1px solid ${a.val?C.yellowBorder:C.border}`, color:a.val?C.yellow:C.textMuted }}>
                 {a.label}: {a.val?"Sim":"Não"}
               </span>
             ))}
+          </div>
+        </div>
+      )}
+
+      {open && editMode && (
+        <div style={{ padding:16 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:14 }}>
+            <div style={{ gridColumn:"1/-1" }}>
+              <Field label="Descrição" value={data.descricao} onChange={(e:any)=>setData((d:any)=>({...d,descricao:e.target.value}))} maxLen={90}/>
+            </div>
+            <Field label="Tipo" type="select" value={data.sigla||""} onChange={(e:any)=>setData((d:any)=>({...d,sigla:e.target.value}))} options={SIGLAS.map(s=>({value:s.value,label:s.label}))}/>
+            <SearchSelect label="Unidade" value={data.unidade||""} onChange={(v:string)=>setData((d:any)=>({...d,unidade:v}))} options={UNIDADES} placeholder="Unidade..."/>
+            <div>
+              <label style={{ fontSize:11, fontWeight:600, color:C.textSub, letterSpacing:0.5, textTransform:"uppercase", display:"block", marginBottom:5 }}>NCM<span style={{ color:C.yellow, marginLeft:3 }}>*</span></label>
+              <input placeholder="0000.00.00" value={data.ncm||""} maxLength={10} inputMode="numeric"
+                onChange={e=>{
+                  const raw=e.target.value.replace(/[^0-9]/g,"").slice(0,8);
+                  let m=raw;
+                  if(raw.length>4) m=raw.slice(0,4)+"."+raw.slice(4);
+                  if(raw.length>6) m=raw.slice(0,4)+"."+raw.slice(4,6)+"."+raw.slice(6);
+                  setData((d:any)=>({...d,ncm:m}));
+                }} style={iS}/>
+            </div>
+            <SearchSelect label="Grupo Protheus" value={data.grupo||""} onChange={(v:string)=>setData((d:any)=>({...d,grupo:v}))} options={GRUPOS_PROTHEUS_ITENS} placeholder="Grupo..."/>
+            <Field label="Fabricante" value={data.fabricante||""} onChange={(e:any)=>setData((d:any)=>({...d,fabricante:e.target.value}))} placeholder="Ex: WEG, ABB..."/>
+            <Field label="Modelo" value={data.modelo||""} onChange={(e:any)=>setData((d:any)=>({...d,modelo:e.target.value}))} placeholder="Ex: CFW500..."/>
+            <Field label="Custo Est. (R$)" value={data.custo||""} onChange={(e:any)=>setData((d:any)=>({...d,custo:e.target.value}))} placeholder="0,00"/>
+            <Field label="Cod. Mecânico" value={data.cod_mecanico||""} onChange={(e:any)=>setData((d:any)=>({...d,cod_mecanico:e.target.value}))} placeholder="Ex: 33.22.11111.00"/>
+            <div style={{ gridColumn:"1/-1" }}>
+              <Field label="Descrição Técnica" type="textarea" value={data.desc_detalhada||""} onChange={(e:any)=>setData((d:any)=>({...d,desc_detalhada:e.target.value}))} placeholder="Características técnicas..."/>
+            </div>
+            {data.importado && (
+              <div style={{ gridColumn:"1/-1" }}>
+                <Field label="Descrição em Inglês" value={data.desc_ingles||""} onChange={(e:any)=>setData((d:any)=>({...d,desc_ingles:e.target.value}))} placeholder="English description..." required/>
+              </div>
+            )}
+            <div style={{ gridColumn:"1/-1", background:C.surfaceMid, borderRadius:6, padding:14, border:`1px solid ${C.border}`, display:"flex", flexDirection:"column", gap:10 }}>
+              {[
+                {key:"importado",   label:"Produto Importado"},
+                {key:"kanban",      label:"Controle Kanban"},
+                {key:"prototipo",   label:"Protótipo"},
+                {key:"chumbo",      label:"Contém Chumbo (RoHS)"},
+                {key:"control_scf", label:"Control SCF"},
+              ].map((f,fi)=>(
+                <div key={f.key}>
+                  {fi>0&&<div style={{ height:1, background:C.border, marginBottom:10 }}/>}
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                    <span style={{ fontSize:13, color:C.textSub }}>{f.label}</span>
+                    <div onClick={()=>setData((d:any)=>({...d,[f.key]:!d[f.key]}))}
+                      style={{ width:38, height:22, borderRadius:11, cursor:"pointer", background:data[f.key]?C.yellow:C.border, position:"relative", transition:"background .2s", flexShrink:0 }}>
+                      <div style={{ position:"absolute", top:3, left:data[f.key]?19:3, width:16, height:16, borderRadius:"50%", background:"#fff", transition:"left .2s" }}/>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ display:"flex", justifyContent:"flex-end", gap:8 }}>
+            <button onClick={()=>{setEditMode(false);setData({...it});}} style={{ background:C.surface, border:`1px solid ${C.border}`, borderRadius:6, color:C.textSub, fontSize:12, padding:"9px 16px", cursor:"pointer", fontFamily:"'IBM Plex Sans',sans-serif" }}>Cancelar</button>
+            <button onClick={handleSave} disabled={saving} style={{ background:C.blue, border:"none", borderRadius:6, color:"#fff", fontSize:12, fontWeight:700, padding:"9px 16px", cursor:"pointer", fontFamily:"'IBM Plex Sans',sans-serif", display:"flex", alignItems:"center", gap:6 }}>
+              {saving?<Spinner size={12}/>:<Icon name="check" size={12} color="#fff"/>} Salvar Item
+            </button>
           </div>
         </div>
       )}
@@ -1563,8 +1718,8 @@ function Detalhe({ sol, onBack, onUpdate, role }: any) {
         sol.observacoes||"", fmtDate(sol.created_at),
       ]);
       const nome = sol.solicitante
-        ? `SOLICITACAO_${sol.solicitante.toUpperCase().replace(/\s+/g,"_")}.xlsx`
-        : `MDM_SOLICITACAO_${sol.numero||"EXPORT"}.xlsx`;
+        ? `SOLICITACAO_${sol.solicitante.toUpperCase().replace(/\s+/g,"_")}.xls`
+        : `MDM_SOLICITACAO_${sol.numero||"EXPORT"}.xls`;
       const xml = buildXmlXlsx(headers, rows);
       downloadXlsx(xml, nome);
     } catch(e:any) { alert("Erro ao exportar: "+e); }
@@ -1680,7 +1835,7 @@ function Detalhe({ sol, onBack, onUpdate, role }: any) {
           <Card style={{ padding:"20px 24px" }}>
             <SecHead icon="box" title={`Itens da Solicitação (${todosItens.length})`}/>
             {todosItens.map((it:any, i:number) => (
-              <ItemExpandivel key={i} it={it} idx={i}/>
+              <ItemExpandivel key={i} it={it} idx={i} solId={sol.id} onSaved={onUpdate} role={role}/>
             ))}
           </Card>
 
