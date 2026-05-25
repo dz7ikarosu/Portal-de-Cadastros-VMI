@@ -496,6 +496,7 @@ function buildXmlXlsx(headers: string[], rows: string[][]): string {
   const colDefs = colWidths.map(w => `<Column ss:Width="${w}"/>`).join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}<Worksheet ss:Name="MDM"><Table>${colDefs}${hRow}\n${dRows}</Table></Worksheet></Workbook>`;
+}
   function downloadXlsx(xml: string, filename: string) {
   try {
     // Try Blob first (desktop)
