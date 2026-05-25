@@ -828,7 +828,7 @@ const DESC_TEMPLATES: Record<string,{fields:{name:string,opts?:string[],hasDim?:
 };
 
 // Campo dimensional: valor + unidade de medida
-abel, value, onChange }: any) {
+function DimField({ label, value, onChange }: any) {
   const [val, setVal] = useState((value||"").replace(/[A-Z°]+$/, ""));
   const [unit, setUnit] = useState((value||"").match(/([A-Z°]+)$/)?.[1] || "MM");
   useEffect(() => {
