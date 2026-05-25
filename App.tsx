@@ -474,7 +474,7 @@ function exportXLSX(sols: any[]) {
     "Número","Status","Solicitante","Setor","Produto","Tipo","Unidade",
     "NCM","Grupo Protheus","Armazém","Custo Est.","Urgente","Motivo Urgência",
     "Kanban","Importado","Protótipo","Control SCF","Chumbo/RoHS",
-    "Cod. Mecânico","Descrição Técnica","Observações","Total Itens","Criado em"
+    "Cod. Mecânico","Descrição Técnica","Observações","Total Itens","Criado em","Responsavel Atual"
   ];
   const rows = sols.map(s => [
     s.numero||"", s.status||"", s.solicitante||"", s.setor||"",
