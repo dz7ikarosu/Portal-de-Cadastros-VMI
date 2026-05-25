@@ -485,7 +485,7 @@ function exportXLSX(sols: any[]) {
     s.prototipo?"Sim":"Não", s.control_scf?"Sim":"Não",
     s.chumbo?"Sim":"Não", s.cod_mecanico||"",
     s.desc_detalhada||"", s.observacoes||"",
-    String(s.total_itens||1), fmtDate(s.created_at), s.responsavel_atual||"",
+    String(s.total_itens||1), fmtDate(s.created_at), s.responsavel||"",
   ]);
   // Nome do arquivo: SOLICITACAO_NOME.xls ou data
   const nome = sols.length===1 && sols[0].solicitante
