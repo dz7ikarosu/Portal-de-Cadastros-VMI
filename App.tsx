@@ -487,9 +487,16 @@ function buildXmlXlsx(headers: string[], rows: string[][]): string {
       </Style>
     </Styles>`;
 
-  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}<Worksheet ss:Name="MDM"><Table DefaultColumnWidth="100">${hRow}\n${dRows}</Table></Worksheet></Workbook>`;
-}
-function downloadXlsx(xml: string, filename: string) {
+// Calcula largura ideal de cada coluna
+  const colWidths = headers.map((h, i) => {
+    const maxContent = rows.reduce((max, r) => Math.max(max, (r[i]||"").length), h.length);
+    return Math.min(Math.max(maxContent * 7, 60), 300);
+  });
+
+  const colDefs = colWidths.map(w => `<Column ss:Width="${w}"/>`).join("");
+
+  return `<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">${styles}<Worksheet ss:Name="MDM"><Table>${colDefs}${hRow}\n${dRows}</Table></Worksheet></Workbook>`;
+  function downloadXlsx(xml: string, filename: string) {
   try {
     // Try Blob first (desktop)
     const blob = new Blob([xml], { type:"application/vnd.ms-excel" });
