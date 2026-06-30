@@ -68,6 +68,7 @@ const EQUIPE = [
   { name:"Heraldo Carvalho", initials:"HC", role:"Analista de MDM"              },
   { name:"Adriana Diniz",    initials:"AD", role:"Gerente de Processos"         },
   { name:"Willian Teixeira", initials:"WT", role:"Jovem Aprendiz"               },
+  { name:"Adriano Heringer", initials:"AH", role:"Teste para Qualidade"         },
 ];
 
 const USERS_MDM = [
@@ -75,6 +76,7 @@ const USERS_MDM = [
   { user:"willian.teixeira", pass:"wt@prime2025!@#" },
   { user:"heraldo.carvalho", pass:"eng1252"         },
   { user:"adriana.diniz",    pass:"eng1253"         },
+  { user:"adriano.heringer", pass:"adriano132"      },
 ];
 const USER_DEV = { user:"icaro.batistadev", pass:"ib@prime2025!@#" };
 
